@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { Column } from "../../data/Column";
+import { Column } from "../../Column";
 import { Eye } from "lucide-react";
 
 interface DataTableBodyProps {

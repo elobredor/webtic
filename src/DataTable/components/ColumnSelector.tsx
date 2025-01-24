@@ -1,4 +1,4 @@
-import { Column } from "../../data/Column";
+import { Column } from "../../Column";
 
 import { FC } from "react";
 

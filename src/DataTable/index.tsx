@@ -6,7 +6,7 @@ import {
 	DataTableHeader,
 	DataTableFooter,
 } from "./components";
-import { Column } from "../data/Column";
+import { Column } from "../Column";
 
 interface DataTableProps {
 	columns: Column[];
@@ -65,6 +65,7 @@ const DataTable: React.FC<DataTableProps> = ({
 	renderActions,
 	tableId,
 }) => {
+	const columnSelectorRef = React.useRef<HTMLDivElement>(null);
 	const [sortConfig, setSortConfig] = useState<{
 		key: string;
 		direction: "asc" | "desc";
@@ -157,7 +158,10 @@ const DataTable: React.FC<DataTableProps> = ({
 				onRefresh={onRefresh}
 				visibleColumns={visibleColumns}
 				toggleColumnVisibility={toggleColumnVisibility}
-				setShowColumnSelector={() => setSelectorVisible((prev) => !prev)}
+				columnSelectorRef={columnSelectorRef}
+				showColumnSelector={false}
+				columns={columns}
+				setShowColumnSelector={setSelectorVisible}
 			/>
 			<ColumnSelector
 				visible={selectorVisible}
@@ -184,7 +188,9 @@ const DataTable: React.FC<DataTableProps> = ({
 									onClick={() => column.sortable && handleSort(column.key.trim())}
 									aria-sort={
 										sortConfig?.key === column.key.trim()
-											? sortConfig.direction
+											? sortConfig.direction === "asc"
+												? "ascending"
+												: "descending"
 											: undefined
 									}
 								>
