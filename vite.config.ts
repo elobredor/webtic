@@ -6,7 +6,7 @@ import dts from "vite-plugin-dts";
 
 // https://vite.dev/config/
 export default defineConfig({
-	plugins: [tailwindcss(), react(), dts()],
+	plugins: [tailwindcss(), react(), dts({ rollupTypes: true })],
 	build: {
 		lib: {
 			entry: resolve(__dirname, "src/main.ts"),
