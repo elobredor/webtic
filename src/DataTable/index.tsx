@@ -12,6 +12,17 @@ interface DataTableProps {
 	columns: Column[];
 	data: any[];
 	loading?: boolean;
+	
+	// Propiedades para paginación
+	pageSize?: number;
+	defaultPageSize?: number;
+	currentPage?: number;
+	totalRecords?: number;
+	pageSizeOptions?: number[];
+	onPageChange?: (page: number) => void;
+	onPageSizeChange?: (size: number) => void;
+	
+	// Propiedades para acciones de tabla
 	onRefresh?: () => void;
 	onDownload?: () => void;
 	onAdd?: () => void;
@@ -56,6 +67,15 @@ const DataTable: React.FC<DataTableProps> = ({
 	columns,
 	data,
 	loading = false,
+	// Propiedades para paginación
+	pageSize: externalPageSize,
+	defaultPageSize = 10,
+	currentPage: externalCurrentPage,
+	totalRecords: externalTotalRecords,
+	pageSizeOptions = [5, 10, 25, 50, 100],
+	onPageChange: externalOnPageChange,
+	onPageSizeChange: externalOnPageSizeChange,
+	// Propiedades para acciones
 	onRefresh,
 	onDownload,
 	onAdd,
@@ -71,9 +91,7 @@ const DataTable: React.FC<DataTableProps> = ({
 		direction: "asc" | "desc";
 	} | null>(null);
 	const [searchTerm, setSearchTerm] = useState("");
-	const [currentPage, setCurrentPage] = useState(1);
 	const [selectorVisible, setSelectorVisible] = useState(false);
-	const [pageSize, setPageSize] = useState(10);
 	const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() => {
 		if (typeof window !== "undefined") {
 			const savedColumns = localStorage.getItem(`${tableId}-visible-columns`);
@@ -83,22 +101,39 @@ const DataTable: React.FC<DataTableProps> = ({
 		}
 		return new Set(columns.map((col) => col.key));
 	});
+	
+	// Estado interno para paginación
+	const [internalCurrentPage, setInternalCurrentPage] = useState(1);
+	const [internalPageSize, setInternalPageSize] = useState(defaultPageSize);
+	
+	// Determinar si usamos valores controlados o internos
+	const isPageControlled = externalCurrentPage !== undefined;
+	const isPageSizeControlled = externalPageSize !== undefined;
+	
+	// Valores actuales para los cálculos
+	const currentPage = isPageControlled ? externalCurrentPage : internalCurrentPage;
+	const pageSize = isPageSizeControlled ? externalPageSize : internalPageSize;
+	
 	const safeData = Array.isArray(data) ? data : [];
 
-	// Reset to the first page when search term, page size, or data changes
+	// Reset a la primera página cuando cambia el término de búsqueda o el tamaño de página
 	useEffect(() => {
-		setCurrentPage(1);
-	}, [searchTerm, pageSize]);
+		if (!isPageControlled) {
+			setInternalCurrentPage(1);
+		} else if (externalOnPageChange) {
+			externalOnPageChange(1);
+		}
+	}, [searchTerm, isPageControlled, externalOnPageChange]);
 
-	// Save visible columns to localStorage whenever they change
-	// useEffect(() => {
-	// 	if (typeof window !== "undefined") {
-	// 		localStorage.setItem(
-	// 			`${tableId}-visible-columns`,
-	// 			JSON.stringify(Array.from(visibleColumns))
-	// 		);
-	// 	}
-	// }, [visibleColumns, tableId]);
+	// Guardar columnas visibles en localStorage
+	useEffect(() => {
+		if (typeof window !== "undefined") {
+			localStorage.setItem(
+				`${tableId}-visible-columns`,
+				JSON.stringify(Array.from(visibleColumns))
+			);
+		}
+	}, [visibleColumns, tableId]);
 
 	const handleSort = (key: string) => {
 		let direction: "asc" | "desc" = "asc";
@@ -118,14 +153,24 @@ const DataTable: React.FC<DataTableProps> = ({
 		[filteredData, sortConfig]
 	);
 
+	// Usar totalRecords externo o calcular del array filtrado
+	const totalRecordsValue = externalTotalRecords !== undefined 
+		? externalTotalRecords 
+		: sortedData.length;
+	
 	const startIndex = (currentPage - 1) * pageSize;
-	const endIndex = Math.min(startIndex + pageSize, sortedData.length);
+	const endIndex = Math.min(startIndex + pageSize, totalRecordsValue);
 
+	// Paginar datos solo si no se proporciona paginación externa
 	const paginatedData = useMemo(() => {
+		// Si tenemos totalRecords externo, asumimos que los datos ya están paginados
+		if (externalTotalRecords !== undefined) {
+			return sortedData;
+		}
 		return sortedData.slice(startIndex, endIndex);
-	}, [sortedData, currentPage, pageSize]);
+	}, [sortedData, startIndex, endIndex, externalTotalRecords]);
 
-	const totalPages = Math.ceil(sortedData.length / pageSize);
+	const totalPages = Math.ceil(totalRecordsValue / pageSize);
 
 	const visibleColumnsList = useMemo(
 		() => columns.filter((col) => visibleColumns.has(col.key)),
@@ -145,7 +190,27 @@ const DataTable: React.FC<DataTableProps> = ({
 	};
 
 	const handlePageChange = (page: number) => {
-		setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+		const safePage = Math.max(1, Math.min(page, totalPages));
+		
+		if (externalOnPageChange) {
+			externalOnPageChange(safePage);
+		} else {
+			setInternalCurrentPage(safePage);
+		}
+	};
+	
+	const handlePageSizeChange = (size: number) => {
+		if (externalOnPageSizeChange) {
+			externalOnPageSizeChange(size);
+		} else {
+			setInternalPageSize(size);
+			// Reset a la primera página
+			if (!isPageControlled) {
+				setInternalCurrentPage(1);
+			} else if (externalOnPageChange) {
+				externalOnPageChange(1);
+			}
+		}
 	};
 
 	return (
@@ -228,11 +293,12 @@ const DataTable: React.FC<DataTableProps> = ({
 				pageSize={pageSize}
 				currentPage={currentPage}
 				totalPages={totalPages}
-				totalRecords={sortedData.length}
+				totalRecords={totalRecordsValue}
 				startIndex={startIndex}
 				endIndex={endIndex}
-				onPageSizeChange={setPageSize}
+				onPageSizeChange={handlePageSizeChange}
 				onPageChange={handlePageChange}
+				pageSizeOptions={pageSizeOptions}
 			/>
 		</div>
 	);
