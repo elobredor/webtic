@@ -276,6 +276,7 @@ const DataTable: React.FC<DataTableProps> = ({
 							)}
 						</tr>
 					</thead>
+					<tbody>
 					<DataTableBody
 						paginatedData={paginatedData}
 						visibleColumnsList={visibleColumnsList}
@@ -286,6 +287,7 @@ const DataTable: React.FC<DataTableProps> = ({
 						onDelete={onDelete}
 						renderActions={renderActions}
 					/>
+					</tbody>
 				</table>
 			</div>
 
